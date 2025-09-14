@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Strumify - Learn Guitar</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Navbar -->
+  <header>
+    <nav class="navbar">
+      <div class="logo">🎸 Strumify</div>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#home">Home</a></li>
+        <li><a href="#about">About</a></li>
+        <li><a href="#courses">Courses</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+      <div class="menu-toggle" id="menuToggle">☰</div>
+    </nav>
+  </header>
+
+  <!-- Hero Section -->
+  <section id="home" class="hero">
+    <h1><span id="typing"></span></h1>
+    <p>Your journey from beginner to pro starts here 🎶</p>
+    <a href="#courses" class="btn">Start Learning</a>
+  </section>
+
+  <!-- About -->
+  <section id="about">
+    <h2>About Strumify</h2>
+    <p>We combine technology + music passion to help you master guitar step by step.</p>
+  </section>
+
+  <!-- Courses (Dynamic) -->
+  <section id="courses">
+    <h2>Our Courses</h2>
+    <div id="courseList" class="course-container"></div>
+  </section>
+
+  <!-- Contact -->
+  <section id="contact">
+    <h2>Contact Us</h2>
+    <p>Email: info@strumify.com</p>
+    <p>WhatsApp: +91 98765 43210</p>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>© <span id="year"></span> Strumify. All Rights Reserved.</p>
+  </footer>
+
+  <!-- JavaScript -->
+  <script src="script.js"></script>
+</body>
+</html>
