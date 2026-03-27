@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 
 import { Card } from "../components/Card";
-import { IconInstagram, IconMail, IconWhatsapp, IconYoutube } from "../components/Icons";
+import { IconInstagram, IconMail, IconTarget, IconWhatsapp, IconYoutube } from "../components/Icons";
 import { ProgressBar } from "../components/ProgressBar";
 import { RevealOnScroll } from "../components/RevealOnScroll";
 import { useMode } from "../context/ModeContext";
@@ -36,19 +36,14 @@ const contactLinks = [
   { id: "youtube", label: "YouTube", href: "https://www.youtube.com/@Strumify-in", Icon: IconYoutube },
   { id: "instagram", label: "Instagram", href: "https://www.instagram.com/strumify.in/", Icon: IconInstagram },
   { id: "whatsapp", label: "WhatsApp", href: "https://chat.whatsapp.com/Kh5YmYY9Ru81LZiPNV3j4z?mode=gi_t", Icon: IconWhatsapp },
-  { id: "email", label: "Email", href: "mailto:strumify.in@gmail.com", Icon: IconMail }
+  { id: "email", label: "Email", href: "mailto:strumify.in@gmail.com", Icon: IconMail },
+  {
+    id: "feedback",
+    label: "Give Feedback",
+    href: "https://docs.google.com/forms/d/e/1FAIpQLScXevIF1-i4zSCZGGhrYaj77rLv0O_5-OFpQIQCFwamCm12og/viewform?usp=header",
+    Icon: IconTarget
+  }
 ];
-
-const parseInstagramBio = (text = "") => {
-  const normalized = text.replace(/\\"/g, '"');
-  const direct = normalized.match(/"biography":"([^"]+)"/);
-  if (direct?.[1]) return direct[1].replace(/\\n/g, " ").trim();
-
-  const description = normalized.match(/Description:([^|\n]+)/i);
-  if (description?.[1]) return description[1].trim();
-
-  return "";
-};
 
 const readPracticeSessions = () => {
   if (typeof window === "undefined") return [];
@@ -68,7 +63,6 @@ export const HomePage = () => {
   const completedLessonIds = useLearningStore((state) => state.completedLessonIds);
   const dailyCompletions = useLearningStore((state) => state.dailyCompletions);
 
-  const [bios, setBios] = useState(() => Object.fromEntries(instructors.map((item) => [item.handle, item.fallback])));
   const actionLink = user ? "/learn" : "/login";
   const sessions = readPracticeSessions();
 
@@ -90,35 +84,6 @@ export const HomePage = () => {
     ],
     []
   );
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadBios = async () => {
-      await Promise.all(
-        instructors.map(async (instructor) => {
-          try {
-            const response = await fetch(`https://r.jina.ai/http://www.instagram.com/${instructor.handle}/`);
-            if (!response.ok) return;
-
-            const text = await response.text();
-            const parsed = parseInstagramBio(text);
-            if (!parsed || cancelled) return;
-
-            setBios((current) => ({ ...current, [instructor.handle]: parsed }));
-          } catch {
-            // keep fallback bio
-          }
-        })
-      );
-    };
-
-    loadBios();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   return (
     <div className="text-[#f5f5f5]">
@@ -257,7 +222,7 @@ export const HomePage = () => {
                   className="mx-auto h-20 w-20 rounded-full object-cover"
                 />
                 <h3 className="mt-4 text-center text-xl font-semibold text-white">{instructor.name}</h3>
-                <p className="mt-2 text-center text-sm text-gray-300">{bios[instructor.handle] || instructor.fallback}</p>
+                <p className="mt-2 text-center text-sm text-gray-300">{instructor.fallback}</p>
                 <a
                   href={instructor.href}
                   target="_blank"
@@ -278,14 +243,14 @@ export const HomePage = () => {
           <RevealOnScroll className="space-y-7 text-center">
           <h2 className="text-3xl font-bold text-white">Connect with Strumify</h2>
           <p className="text-gray-300">Reach out anytime through your preferred channel.</p>
-          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-5">
             {contactLinks.map(({ id, href, label, Icon }) => (
               <a
                 key={id}
                 href={href}
                 target={href.startsWith("mailto:") ? "_self" : "_blank"}
-                rel="noreferrer"
-                className="rounded-xl border border-white/15 bg-[#161616] p-4 transition hover:scale-[1.03] hover:border-white/35"
+                rel="noopener noreferrer"
+                className="social-btn"
               >
                 <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-white/20">
                   <Icon className="h-5 w-5 text-white" />

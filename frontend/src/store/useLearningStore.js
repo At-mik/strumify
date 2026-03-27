@@ -1,7 +1,9 @@
 import { create } from "zustand";
+import { setAuthToken } from "../api/api";
 
 const MODE_KEY = "strumify_mode";
 const USER_KEY = "strumify_user";
+const TOKEN_KEY = "strumify_token";
 const COMPLETED_KEY = "strumify_completed_lessons";
 const DAILY_KEY = "strumify_daily_completions";
 const FEEDBACK_KEY = "strumify_lesson_feedback";
@@ -46,9 +48,18 @@ const readUser = () => {
   if (!stored || typeof stored !== "object") return null;
 
   return {
+    id: typeof stored.id === "string" ? stored.id : "",
     name: typeof stored.name === "string" ? stored.name : "",
-    email: typeof stored.email === "string" ? stored.email : ""
+    email: typeof stored.email === "string" ? stored.email : "",
+    xp: Number.isFinite(stored.xp) ? stored.xp : 0,
+    level: Number.isFinite(stored.level) ? stored.level : 1,
+    rankTitle: typeof stored.rankTitle === "string" ? stored.rankTitle : ""
   };
+};
+
+const readToken = () => {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(TOKEN_KEY) || "";
 };
 
 const readCompleted = () => {
@@ -76,6 +87,7 @@ const readFeedback = () => {
 export const useLearningStore = create((set, get) => ({
   mode: readMode(),
   user: readUser(),
+  token: readToken(),
   completedLessonIds: readCompleted(),
   dailyCompletions: readDailyCompletions(),
   lessonFeedback: readFeedback(),
@@ -88,20 +100,50 @@ export const useLearningStore = create((set, get) => ({
     set({ mode: next });
   },
 
-  setUser: ({ name, email }) => {
+  setUser: ({ id, name, email, xp = 0, level = 1, rankTitle = "" }) => {
     const user = {
+      id: typeof id === "string" ? id.trim() : "",
       name: typeof name === "string" ? name.trim() : "",
-      email: typeof email === "string" ? email.trim() : ""
+      email: typeof email === "string" ? email.trim() : "",
+      xp: Number.isFinite(xp) ? xp : 0,
+      level: Number.isFinite(level) ? level : 1,
+      rankTitle: typeof rankTitle === "string" ? rankTitle.trim() : ""
     };
 
     writeJson(USER_KEY, user);
     set({ user });
   },
 
+  setToken: (token) => {
+    const normalizedToken = typeof token === "string" ? token.trim() : "";
+    setAuthToken(normalizedToken);
+    set({ token: normalizedToken });
+  },
+
+  setSession: ({ user, token }) => {
+    const normalizedUser = user && typeof user === "object" ? user : null;
+    const normalizedToken = typeof token === "string" ? token.trim() : "";
+
+    if (typeof window !== "undefined") {
+      if (normalizedUser) {
+        localStorage.setItem(USER_KEY, JSON.stringify(normalizedUser));
+      } else {
+        localStorage.removeItem(USER_KEY);
+      }
+    }
+    setAuthToken(normalizedToken);
+
+    set({
+      user: normalizedUser,
+      token: normalizedToken
+    });
+  },
+
   logout: () => {
     writeJson(USER_KEY, null);
     writeJson(MODE_KEY, null);
-    set({ user: null, mode: null });
+    setAuthToken("");
+    set({ user: null, mode: null, token: "" });
   },
 
   completeLesson: ({ lessonId, feedback, durationSeconds = 0 }) => {

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useSearchParams } from "react-router-dom";
 
+import { setAuthToken } from "../api/api";
 import { AuthModal } from "../components/AuthModal";
+import { Footer } from "../components/Footer";
 import { useMode } from "../context/ModeContext";
 import { useLearningStore } from "../store/useLearningStore";
 
@@ -101,6 +103,18 @@ export const AppLayout = () => {
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [profileMenuOpen]);
+
+  useEffect(() => {
+    const onUnauthorized = () => {
+      setAuthToken("");
+      logout();
+      setAuthInitialTab("login");
+      setAuthOpen(true);
+    };
+
+    window.addEventListener("strumify:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("strumify:unauthorized", onUnauthorized);
+  }, [logout]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -308,6 +322,9 @@ export const AppLayout = () => {
       <main className="relative z-10 pb-8 pt-20">
         <Outlet />
       </main>
+      <div className="relative z-10">
+        <Footer />
+      </div>
 
       <div
         ref={mobileSheetRef}

@@ -1,23 +1,27 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { loginRequest, signupRequest } from "../api/authApi";
+import { getApiErrorMessage, setAuthToken } from "../api/api";
 import { useMode } from "../context/ModeContext";
 import { useLearningStore } from "../store/useLearningStore";
 
 export const AuthModal = ({ open, initialTab = "login", onClose }) => {
   const navigate = useNavigate();
   const { mode } = useMode();
-  const setUser = useLearningStore((state) => state.setUser);
+  const setSession = useLearningStore((state) => state.setSession);
 
   const [tab, setTab] = useState(initialTab === "signup" ? "signup" : "login");
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [signupForm, setSignupForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
       setTab(initialTab === "signup" ? "signup" : "login");
       setError("");
+      setLoading(false);
     }
   }, [open, initialTab]);
 
@@ -37,34 +41,89 @@ export const AuthModal = ({ open, initialTab = "login", onClose }) => {
   const activeTone = mode === "kids" ? "bg-[#8b5cf6] text-white" : "bg-[#38bdf8] text-[#03101a]";
   const submitTone = mode === "kids" ? "bg-[#8b5cf6] text-white hover:bg-[#9d78fb]" : "bg-[#38bdf8] text-[#03101a] hover:bg-[#67d0fc]";
 
-  const submitLogin = (event) => {
+  const submitLogin = async (event) => {
     event.preventDefault();
+    if (loading) return;
+
     if (!loginForm.email.trim() || !loginForm.password.trim()) {
       setError("Please enter email and password.");
       return;
     }
 
-    setUser({
-      name: loginForm.email.split("@")[0],
-      email: loginForm.email
-    });
-    onClose();
-    navigate("/profile-select", { replace: true });
+    setError("");
+    setLoading(true);
+    try {
+      const data = await loginRequest({
+        email: loginForm.email.trim(),
+        password: loginForm.password
+      });
+      if (!data?.token || !data?.user) {
+        throw new Error("Unable to log in right now. Please try again.");
+      }
+
+      setAuthToken(data.token);
+      setSession({
+        token: data.token,
+        user: {
+          id: String(data.user.id || ""),
+          name: String(data.user.name || ""),
+          email: String(data.user.email || ""),
+          xp: Number(data.user.xp || 0),
+          level: Number(data.user.level || 1),
+          rankTitle: String(data.user.rankTitle || "")
+        }
+      });
+
+      onClose();
+      navigate("/profile-select", { replace: true });
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Login failed. Check your credentials and try again."));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const submitSignup = (event) => {
+  const submitSignup = async (event) => {
     event.preventDefault();
+    if (loading) return;
+
     if (!signupForm.name.trim() || !signupForm.email.trim() || !signupForm.password.trim()) {
       setError("Please complete all fields.");
       return;
     }
 
-    setUser({
-      name: signupForm.name,
-      email: signupForm.email
-    });
-    onClose();
-    navigate("/profile-select", { replace: true });
+    setError("");
+    setLoading(true);
+    try {
+      const data = await signupRequest({
+        name: signupForm.name.trim(),
+        email: signupForm.email.trim(),
+        password: signupForm.password
+      });
+      if (!data?.token || !data?.user) {
+        throw new Error("Unable to create your account right now. Please try again.");
+      }
+
+      setAuthToken(data.token);
+      setSession({
+        token: data.token,
+        user: {
+          id: String(data.user.id || ""),
+          name: String(data.user.name || ""),
+          email: String(data.user.email || ""),
+          xp: Number(data.user.xp || 0),
+          level: Number(data.user.level || 1),
+          rankTitle: String(data.user.rankTitle || "")
+        }
+      });
+
+      onClose();
+      navigate("/profile-select", { replace: true });
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Signup failed. Please try again."));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -132,9 +191,10 @@ export const AuthModal = ({ open, initialTab = "login", onClose }) => {
 
               <button
                 type="submit"
-                className={`h-11 w-full rounded-xl text-sm font-semibold transition hover:scale-[1.03] ${submitTone}`}
+                disabled={loading}
+                className={`h-11 w-full rounded-xl text-sm font-semibold transition hover:scale-[1.03] disabled:cursor-not-allowed disabled:opacity-60 ${submitTone}`}
               >
-                Continue
+                {loading ? "Signing in..." : "Continue"}
               </button>
             </form>
           ) : (
@@ -176,9 +236,10 @@ export const AuthModal = ({ open, initialTab = "login", onClose }) => {
 
               <button
                 type="submit"
-                className={`h-11 w-full rounded-xl text-sm font-semibold transition hover:scale-[1.03] ${submitTone}`}
+                disabled={loading}
+                className={`h-11 w-full rounded-xl text-sm font-semibold transition hover:scale-[1.03] disabled:cursor-not-allowed disabled:opacity-60 ${submitTone}`}
               >
-                Create Account
+                {loading ? "Creating account..." : "Create Account"}
               </button>
             </form>
           )}

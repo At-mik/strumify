@@ -1,4 +1,4 @@
-import { axiosClient } from "./axiosClient";
+import { axiosClient } from "./api";
 
 export const fetchCoursesRequest = async () => {
   try {

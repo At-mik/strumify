@@ -53,3 +53,19 @@ iframe {
 .animate-neonGrid {
   animation: neonGridDrift 10s ease-in-out infinite;
 }
+
+.social-btn {
+  display: block;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #161616;
+  padding: 1rem;
+  text-align: center;
+  transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.social-btn:hover {
+  transform: scale(1.03);
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.14);
+}

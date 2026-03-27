@@ -114,8 +114,7 @@ const hasMediaSupport = () => typeof navigator !== "undefined" && Boolean(naviga
 
 const isSecureMediaContext = () => {
   if (typeof window === "undefined") return true;
-  if (window.isSecureContext) return true;
-  return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  return Boolean(window.isSecureContext);
 };
 
 const pickRecorderMime = (kind = "audio") => {
@@ -1596,7 +1595,7 @@ export const StudioPage = () => {
       return;
     }
     if (!isSecureMediaContext()) {
-      setStatus("Camera and microphone require HTTPS (or localhost).");
+      setStatus("Camera and microphone require a secure HTTPS context.");
       return;
     }
 
