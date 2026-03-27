@@ -1,0 +1,21 @@
+{
+  "name": "strumify",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev:all",
+    "dev:backend": "npm run -w backend dev",
+    "dev:frontend": "npm run -w frontend dev",
+    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "seed": "npm run -w backend seed",
+    "build": "npm run -w frontend build",
+    "start": "npm run -w backend start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
