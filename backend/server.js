@@ -14,59 +14,70 @@ import userRoutes from "./routes/userRoutes.js";
 dotenv.config();
 
 const app = express();
-const { MONGO_URI, JWT_SECRET, PORT = 5001, CLIENT_ORIGIN } = process.env;
 
-if (!MONGO_URI) throw new Error("Missing required environment variable: MONGO_URI");
-if (!JWT_SECRET) throw new Error("Missing required environment variable: JWT_SECRET");
+// ENV
+const PORT = process.env.PORT || 10000;
+const { MONGO_URI, JWT_SECRET } = process.env;
 
+// HARD FAIL if missing critical env
+if (!MONGO_URI) throw new Error("Missing MONGO_URI");
+if (!JWT_SECRET) throw new Error("Missing JWT_SECRET");
+
+// CORS (fixed)
 app.use(
   cors({
-    origin: CLIENT_ORIGIN ? CLIENT_ORIGIN.split(",").map((origin) => origin.trim()) : true,
+    origin: process.env.CLIENT_URL || "*",
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
 
+// Middleware
 app.use(express.json({ limit: "1mb" }));
 
+// Health check
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", service: "strumify-api" });
 });
 
+// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/modules", moduleRoutes);
 app.use("/api/lessons", lessonRoutes);
 
+// Error handling
 app.use(notFoundMiddleware);
 app.use(errorMiddleware);
 
-const startServer = async () => {
-  await mongoose.connect(MONGO_URI, {
+// 🚀 START SERVER FIRST (CRITICAL FOR RENDER)
+app.listen(PORT, () => {
+  console.log(`Strumify backend running on port ${PORT}`);
+});
+
+// 🔌 CONNECT DB SEPARATELY (DO NOT BLOCK SERVER)
+mongoose
+  .connect(MONGO_URI, {
     maxPoolSize: 10,
     serverSelectionTimeoutMS: 10000
+  })
+  .then(() => {
+    console.log(`MongoDB connected: ${mongoose.connection.name}`);
+  })
+  .catch((err) => {
+    console.error("MongoDB connection failed:", err.message);
   });
 
-  console.log(`MongoDB connected: ${mongoose.connection.name}`);
+// Graceful shutdown (optional but fine)
+process.on("SIGINT", async () => {
+  console.log("SIGINT received. Shutting down...");
+  await mongoose.connection.close();
+  process.exit(0);
+});
 
-  const server = app.listen(PORT, () => {
-    console.log(`Strumify backend running on port ${PORT}`);
-  });
-
-  const shutdown = async (signal) => {
-    console.log(`${signal} received. Shutting down...`);
-    server.close(async () => {
-      await mongoose.connection.close();
-      process.exit(0);
-    });
-  };
-
-  process.on("SIGINT", () => shutdown("SIGINT"));
-  process.on("SIGTERM", () => shutdown("SIGTERM"));
-};
-
-startServer().catch((error) => {
-  console.error("Failed to start server:", error.message);
-  process.exit(1);
+process.on("SIGTERM", async () => {
+  console.log("SIGTERM received. Shutting down...");
+  await mongoose.connection.close();
+  process.exit(0);
 });
