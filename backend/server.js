@@ -17,18 +17,17 @@ const app = express();
 
 // ENV
 const PORT = process.env.PORT || 10000;
-const { MONGO_URI, JWT_SECRET } = process.env;
+const { MONGO_URI, JWT_SECRET, CLIENT_URL } = process.env;
 
 // HARD FAIL if missing critical env
 if (!MONGO_URI) throw new Error("Missing MONGO_URI");
 if (!JWT_SECRET) throw new Error("Missing JWT_SECRET");
 
-// CORS (fixed)
+// ✅ CORS (FINAL FIXED VERSION)
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "*",
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"]
+    origin: CLIENT_URL || "*",
+    credentials: true
   })
 );
 
@@ -51,12 +50,12 @@ app.use("/api/lessons", lessonRoutes);
 app.use(notFoundMiddleware);
 app.use(errorMiddleware);
 
-// 🚀 START SERVER FIRST (CRITICAL FOR RENDER)
+// 🚀 START SERVER FIRST (REQUIRED FOR RENDER)
 app.listen(PORT, () => {
   console.log(`Strumify backend running on port ${PORT}`);
 });
 
-// 🔌 CONNECT DB SEPARATELY (DO NOT BLOCK SERVER)
+// 🔌 CONNECT DB SEPARATELY
 mongoose
   .connect(MONGO_URI, {
     maxPoolSize: 10,
@@ -69,7 +68,7 @@ mongoose
     console.error("MongoDB connection failed:", err.message);
   });
 
-// Graceful shutdown (optional but fine)
+// Graceful shutdown
 process.on("SIGINT", async () => {
   console.log("SIGINT received. Shutting down...");
   await mongoose.connection.close();
