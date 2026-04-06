@@ -13,20 +13,20 @@ import { getDailyStreak, getOverallProgress } from "../utils/learningPath";
 
 const instructors = [
   {
-    handle: "its.atmik",
     name: "Atmik",
+    photo: "/Atmik.png",
     href: "https://www.instagram.com/its.atmik/",
     fallback: "Leads beginner training with clear technique and consistency-first practice."
   },
   {
-    handle: "shubh_musico",
-    name: "Shubh",
+    name: "Shubham",
+    photo: "/Shubham.jpeg",
     href: "https://www.instagram.com/shubh_musico/",
     fallback: "Focuses on rhythm feel and musical confidence through guided routines."
   },
   {
-    handle: "strumify.in",
     name: "Strumify",
+    photo: "/Strumify.png",
     href: "https://www.instagram.com/strumify.in/",
     fallback: "Shares daily practice ideas and song-ready learning direction."
   }
@@ -215,9 +215,9 @@ export const HomePage = () => {
           <h2 className="text-3xl font-bold text-white">Meet Your Instructors</h2>
           <div className="grid gap-5 md:grid-cols-3">
             {instructors.map((instructor) => (
-              <Card key={instructor.handle} mode={mode} interactive>
+              <Card key={instructor.name} mode={mode} interactive>
                 <img
-                  src={`https://unavatar.io/instagram/${instructor.handle}`}
+                  src={instructor.photo}
                   alt={`${instructor.name} avatar`}
                   className="mx-auto h-20 w-20 rounded-full object-cover"
                 />

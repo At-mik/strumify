@@ -7,8 +7,6 @@ import { useMode } from "../context/ModeContext";
 import { Container } from "../layouts/Container";
 import { useLearningStore } from "../store/useLearningStore";
 
-const PRACTICE_SESSIONS_KEY = "strumify_practice_sessions";
-
 const strings = [
   { note: "E", full: "E2", frequency: 82.41 },
   { note: "A", full: "A2", frequency: 110.0 },
@@ -27,13 +25,6 @@ const chordTargets = {
   "F major": ["F", "A", "C"]
 };
 
-const goals = [
-  { id: "chord-trainer", label: "Chord Trainer", description: "Target chord note accuracy" },
-  { id: "rhythm-trainer", label: "Rhythm Trainer", description: "Timing lock with metronome" },
-  { id: "timing-grid", label: "Timing Grid", description: "Millisecond timing alignment" },
-  { id: "speed-trainer", label: "Speed Trainer", description: "Progressive BPM control" }
-];
-
 const chordLoops = [
   { id: "loop-1", label: "G → C → D", chords: ["G major", "C major", "D major"] },
   { id: "loop-2", label: "Em → D → C → D", chords: ["E minor", "D major", "C major", "D major"] },
@@ -45,30 +36,6 @@ const hasMediaSupport = () => typeof navigator !== "undefined" && Boolean(naviga
 const getAudioContextClass = () => {
   if (typeof window === "undefined") return null;
   return window.AudioContext || window.webkitAudioContext || null;
-};
-
-const readSessions = () => {
-  if (typeof window === "undefined") return [];
-
-  try {
-    const raw = localStorage.getItem(PRACTICE_SESSIONS_KEY);
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
-const saveSessions = (items) => {
-  if (typeof window === "undefined") return;
-
-  try {
-    localStorage.setItem(PRACTICE_SESSIONS_KEY, JSON.stringify(items));
-  } catch (error) {
-    console.error("Unable to persist practice sessions", error);
-  }
 };
 
 const autoCorrelate = (buffer, sampleRate) => {
@@ -170,16 +137,17 @@ export const ToolsPage = () => {
   const user = useLearningStore((state) => state.user);
   const { mode } = useMode();
 
-  const [goal, setGoal] = useState(goals[0].id);
-  const [targetChord, setTargetChord] = useState("C major");
   const [targetLoopId, setTargetLoopId] = useState(chordLoops[0].id);
+  const [targetChord, setTargetChord] = useState(chordLoops[0].chords[0]);
   const [tunerEnabled, setTunerEnabled] = useState(false);
 
   const [bpm, setBpm] = useState(80);
   const [running, setRunning] = useState(false);
   const [beat, setBeat] = useState(0);
+
   const [sessionActive, setSessionActive] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [status, setStatus] = useState("");
 
   const [pitchFrequency, setPitchFrequency] = useState(null);
   const [timingDiffMs, setTimingDiffMs] = useState(0);
@@ -190,14 +158,8 @@ export const ToolsPage = () => {
     pitchHits: 0,
     timingHits: 0,
     chordHits: 0,
-    samples: 0,
-    mistakes: 0
+    samples: 0
   });
-
-  const [sessionResult, setSessionResult] = useState(null);
-  const [sessions, setSessions] = useState(() => readSessions());
-
-  const [status, setStatus] = useState("");
 
   const tapRef = useRef([]);
   const beatRef = useRef(0);
@@ -210,12 +172,14 @@ export const ToolsPage = () => {
   const analyserRef = useRef(null);
   const dataRef = useRef(null);
   const frameRef = useRef(null);
-  const sessionTimerRef = useRef(null);
   const waveformRef = useRef(null);
   const waveformFrameRef = useRef(null);
-  const speedTimerRef = useRef(null);
+  const sessionTimerRef = useRef(null);
 
   if (!user) return <Navigate to="/login" replace />;
+
+  const activeLoop = chordLoops.find((loop) => loop.id === targetLoopId) || chordLoops[0];
+  const notesForChord = chordTargets[targetChord] || [];
 
   const pitchString = useMemo(() => (pitchFrequency ? closestString(pitchFrequency) : null), [pitchFrequency]);
 
@@ -243,18 +207,15 @@ export const ToolsPage = () => {
       .join(" ");
   }, [pitchHistory]);
 
-  const accuracyPercent = useMemo(() => {
+  const pitchAccuracyPercent = useMemo(() => {
     if (metrics.samples === 0) return 0;
-    const totalHits = metrics.pitchHits + metrics.timingHits + metrics.chordHits;
-    return Math.round((totalHits / (metrics.samples * 3)) * 100);
+    return Math.round((metrics.pitchHits / metrics.samples) * 100);
   }, [metrics]);
 
   const chordAccuracyPercent = useMemo(() => {
     if (metrics.samples === 0) return 0;
     return Math.round((metrics.chordHits / metrics.samples) * 100);
   }, [metrics]);
-
-  const notesForChord = chordTargets[targetChord] || [];
 
   const msTimingDiff = Math.round(Math.abs(timingDiffMs));
   const timingLabel = timingState(timingDiffMs);
@@ -264,6 +225,7 @@ export const ToolsPage = () => {
       window.cancelAnimationFrame(frameRef.current);
       frameRef.current = null;
     }
+
     if (waveformFrameRef.current && typeof window !== "undefined") {
       window.cancelAnimationFrame(waveformFrameRef.current);
       waveformFrameRef.current = null;
@@ -286,6 +248,8 @@ export const ToolsPage = () => {
   const stopMetronome = () => {
     setRunning(false);
     setBeat(0);
+    beatRef.current = 0;
+
     if (metronomeAudioRef.current) {
       metronomeAudioRef.current.close().catch(() => {});
       metronomeAudioRef.current = null;
@@ -296,10 +260,6 @@ export const ToolsPage = () => {
     if (sessionTimerRef.current) {
       clearInterval(sessionTimerRef.current);
       sessionTimerRef.current = null;
-    }
-    if (speedTimerRef.current) {
-      clearInterval(speedTimerRef.current);
-      speedTimerRef.current = null;
     }
   };
 
@@ -378,8 +338,7 @@ export const ToolsPage = () => {
           pitchHits: current.pitchHits + (Math.abs(nearest.cents) <= 12 ? 1 : 0),
           timingHits: current.timingHits + (timingDistance <= 70 ? 1 : 0),
           chordHits: current.chordHits + (chordHit ? 1 : 0),
-          samples: current.samples + 1,
-          mistakes: current.mistakes + (feedback === "wrong" ? 1 : 0)
+          samples: current.samples + 1
         }));
       }
     }
@@ -389,7 +348,7 @@ export const ToolsPage = () => {
 
   const startAudioAnalysis = async () => {
     if (!hasMediaSupport()) {
-      setStatus("Microphone is not supported.");
+      setStatus("Microphone is not supported in this browser.");
       return;
     }
 
@@ -448,9 +407,10 @@ export const ToolsPage = () => {
     const interval = Math.max(120, Math.round(60000 / bpm));
 
     const timer = setInterval(() => {
-      const beat = beatRef.current;
-      beatRef.current = (beatRef.current + 1) % 4;
-      setBeat(beat);
+      const currentBeat = beatRef.current;
+      const nextBeat = (currentBeat + 1) % 4;
+      beatRef.current = nextBeat;
+      setBeat(nextBeat);
       expectedBeatTimeRef.current = performance.now();
 
       const context = metronomeAudioRef.current;
@@ -459,7 +419,7 @@ export const ToolsPage = () => {
       const oscillator = context.createOscillator();
       const gain = context.createGain();
 
-      oscillator.frequency.value = beat === 0 ? 1200 : 880;
+      oscillator.frequency.value = nextBeat === 0 ? 1200 : 880;
       gain.gain.value = 0.045;
       oscillator.connect(gain);
       gain.connect(context.destination);
@@ -472,30 +432,20 @@ export const ToolsPage = () => {
 
   const startSession = async () => {
     setStatus("");
-    setSessionResult(null);
-    setMetrics({ pitchHits: 0, timingHits: 0, chordHits: 0, samples: 0, mistakes: 0 });
+    setMetrics({ pitchHits: 0, timingHits: 0, chordHits: 0, samples: 0 });
     setPitchHistory([]);
     setElapsed(0);
-
-    const recommendedBpm = goal === "speed-trainer" ? 104 : goal === "timing-grid" ? 72 : 80;
-    setBpm(recommendedBpm);
 
     if (tunerEnabled) {
       await startAudioAnalysis();
     } else {
-      setStatus("Tuner is OFF by default. Enable it for pitch and chord accuracy feedback.");
+      setStatus("Tuner is OFF. Enable tuner for pitch and chord tracking.");
     }
 
     startMetronome();
 
     setSessionActive(true);
     sessionTimerRef.current = setInterval(() => setElapsed((prev) => prev + 1), 1000);
-
-    if (goal === "speed-trainer") {
-      speedTimerRef.current = setInterval(() => {
-        setBpm((current) => Math.min(200, current + 4));
-      }, 20000);
-    }
   };
 
   const stopSession = () => {
@@ -503,29 +453,6 @@ export const ToolsPage = () => {
     stopMetronome();
     stopSessionTimer();
     setSessionActive(false);
-
-    const previous = sessions[0];
-    const currentAccuracy = accuracyPercent;
-    const improvement = previous ? currentAccuracy - (previous.accuracyPercent || 0) : currentAccuracy;
-
-    const result = {
-      id: `${Date.now()}`,
-      date: new Date().toISOString(),
-      goal,
-      practiceMinutes: Math.round(elapsed / 60),
-      elapsed,
-      accuracyPercent: currentAccuracy,
-      chordAccuracyPercent,
-      pitchStability,
-      timingDiff: msTimingDiff,
-      mistakes: metrics.mistakes,
-      improvement
-    };
-
-    const next = [result, ...sessions].slice(0, 30);
-    setSessions(next);
-    saveSessions(next);
-    setSessionResult(result);
   };
 
   const tapTempo = () => {
@@ -545,40 +472,6 @@ export const ToolsPage = () => {
     setBpm(Math.max(40, Math.min(200, nextBpm)));
   };
 
-  const aiSuggestion = useMemo(() => {
-    if (!sessionResult) return "";
-
-    if (sessionResult.timingDiff > 90) {
-      return "Timing is your weak area. Reduce BPM by 8 and run Timing Grid for one more cycle.";
-    }
-
-    if (sessionResult.pitchStability < 65) {
-      return "Pitch stability is low. Hold notes longer with slower chord transitions.";
-    }
-
-    if (sessionResult.chordAccuracyPercent < 70) {
-      return "Chord accuracy needs work. Focus on Chord Trainer with C major and G major for 10 minutes.";
-    }
-
-    return "Great balance. Increase BPM by 6 and continue in Speed Trainer mode.";
-  }, [sessionResult]);
-
-  const applyAiAdjustment = () => {
-    if (!sessionResult) return;
-
-    if (sessionResult.timingDiff > 90) {
-      setBpm((current) => Math.max(40, current - 8));
-      return;
-    }
-
-    if (sessionResult.pitchStability < 65 || sessionResult.chordAccuracyPercent < 70) {
-      setBpm((current) => Math.max(40, current - 4));
-      return;
-    }
-
-    setBpm((current) => Math.min(200, current + 6));
-  };
-
   useEffect(() => {
     return () => {
       stopAudio();
@@ -592,103 +485,117 @@ export const ToolsPage = () => {
   return (
     <Container className="space-y-8 py-20">
       <section className="space-y-3">
-        <p className="text-sm uppercase tracking-[0.18em] text-gray-400">Practice</p>
-        <h1 className="text-4xl font-bold text-white">Practice with Real Feedback</h1>
-        <p className="max-w-3xl text-gray-300">
-          Improve timing, pitch control, and chord confidence with focused sessions that react to how you play.
-        </p>
+        <p className="text-sm uppercase tracking-[0.18em] text-gray-400">Tools</p>
+        <h1 className="text-4xl font-bold text-white">Metronome, Guitar Tuner, Live Feedback, Chord Loops</h1>
+        <p className="max-w-3xl text-gray-300">Use focused tools to lock rhythm, tune accurately, and track chord precision in real time.</p>
       </section>
 
       <section className="rounded-2xl border border-white/10 bg-[#141414] p-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {goals.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setGoal(item.id)}
-              className={`rounded-xl border px-4 py-3 text-left transition hover:scale-[1.03] ${
-                goal === item.id
-                  ? "border-[#f0b64f] bg-[#f59e0b]/20 text-[#f7d79c]"
-                  : "border-white/10 bg-[#101010] text-gray-200"
-              }`}
-            >
-              <p className="text-sm font-semibold">{item.label}</p>
-              <p className="mt-1 text-xs text-gray-300">{item.description}</p>
-            </button>
-          ))}
-        </div>
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="rounded-xl border border-white/10 bg-[#101010] p-4">
+            <h2 className="text-lg font-semibold text-white">Chord Loops</h2>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {chordLoops.map((loop) => (
+                <button
+                  key={loop.id}
+                  type="button"
+                  onClick={() => {
+                    setTargetLoopId(loop.id);
+                    setTargetChord(loop.chords[0]);
+                  }}
+                  className={`rounded-lg border px-3 py-2 text-xs transition hover:scale-[1.03] ${
+                    targetLoopId === loop.id
+                      ? "border-[#67bce7] bg-[#38bdf8]/20 text-[#d7f1ff]"
+                      : "border-white/15 bg-[#0f0f0f] text-gray-300"
+                  }`}
+                >
+                  {loop.label}
+                </button>
+              ))}
+            </div>
 
-        <div className="mt-5 rounded-xl border border-white/10 bg-[#101010] p-4">
-          <p className="text-sm font-semibold text-white">Chord Loops</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {chordLoops.map((loop) => (
-              <button
-                key={loop.id}
-                type="button"
-                onClick={() => {
-                  setTargetLoopId(loop.id);
-                  setTargetChord(loop.chords[0]);
-                }}
-                className={`rounded-lg border px-3 py-2 text-xs transition hover:scale-[1.03] ${
-                  targetLoopId === loop.id
-                    ? "border-[#67bce7] bg-[#38bdf8]/20 text-[#d7f1ff]"
-                    : "border-white/15 bg-[#0f0f0f] text-gray-300"
-                }`}
-              >
-                {loop.label}
-              </button>
-            ))}
+            <div className="mt-4 flex flex-wrap gap-2">
+              {activeLoop.chords.map((chord) => (
+                <span key={chord} className="rounded-full border border-white/15 bg-[#0f0f0f] px-3 py-1 text-xs text-gray-300">
+                  {chord}
+                </span>
+              ))}
+            </div>
+
+            <label className="mt-4 inline-flex items-center gap-2 rounded-lg border border-white/15 bg-[#0f0f0f] px-3 py-2 text-sm">
+              Target Chord
+              <select value={targetChord} onChange={(event) => setTargetChord(event.target.value)} className="rounded bg-[#0a0a0a] px-2 py-1">
+                {Object.keys(chordTargets).map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-[#101010] p-4">
+            <h2 className="text-lg font-semibold text-white">Metronome</h2>
+
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <label className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-[#0f0f0f] px-3 py-2 text-sm">
+                BPM
+                <input
+                  type="number"
+                  min={40}
+                  max={200}
+                  value={bpm}
+                  onChange={(event) => setBpm(Math.max(40, Math.min(200, Number(event.target.value) || 40)))}
+                  className="w-16 rounded bg-[#0a0a0a] px-2 py-1"
+                />
+              </label>
+
+              <Button mode={mode} variant="secondary" onClick={tapTempo}>
+                Tap Tempo
+              </Button>
+
+              {running ? (
+                <Button mode={mode} variant="secondary" onClick={stopMetronome}>
+                  Stop Metronome
+                </Button>
+              ) : (
+                <Button mode={mode} variant="secondary" onClick={startMetronome}>
+                  Start Metronome
+                </Button>
+              )}
+            </div>
+
+            <div className="mt-4 grid grid-cols-4 gap-2">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <span
+                  key={index}
+                  className={`h-7 rounded border ${running && index === beat ? "border-[#f0b64f] bg-[#f59e0b]/35" : "border-white/10 bg-[#0f0f0f]"}`}
+                />
+              ))}
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <label className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-[#0f0f0f] px-3 py-2 text-xs text-gray-300">
+                <input type="checkbox" checked={tunerEnabled} onChange={(event) => setTunerEnabled(event.target.checked)} />
+                Tuner ON
+              </label>
+
+              {!sessionActive ? (
+                <Button mode={mode} onClick={startSession}>
+                  Start Live Feedback
+                </Button>
+              ) : (
+                <Button mode={mode} onClick={stopSession}>
+                  Stop Live Feedback
+                </Button>
+              )}
+
+              <span className="ml-auto text-sm text-gray-300">Session: {formatDuration(elapsed)}</span>
+            </div>
+
+            {status ? <p className="mt-3 text-sm text-gray-300">{status}</p> : null}
           </div>
         </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <label className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-[#101010] px-3 py-2 text-sm">
-            Target Chord
-            <select value={targetChord} onChange={(event) => setTargetChord(event.target.value)} className="rounded bg-[#0f0f0f] px-2 py-1">
-              {Object.keys(chordTargets).map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-[#101010] px-3 py-2 text-sm">
-            BPM
-            <input
-              type="number"
-              min={40}
-              max={200}
-              value={bpm}
-              onChange={(event) => setBpm(Math.max(40, Math.min(200, Number(event.target.value) || 40)))}
-              className="w-16 rounded bg-[#0f0f0f] px-2 py-1"
-            />
-          </label>
-
-          <Button mode={mode} variant="secondary" onClick={tapTempo}>
-            Tap Tempo
-          </Button>
-
-          <label className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-[#101010] px-3 py-2 text-xs text-gray-300">
-            <input type="checkbox" checked={tunerEnabled} onChange={(event) => setTunerEnabled(event.target.checked)} />
-            Tuner ON
-          </label>
-
-          {!sessionActive ? (
-            <Button mode={mode} onClick={startSession}>
-              Start Session
-            </Button>
-          ) : (
-            <Button mode={mode} onClick={stopSession}>
-              Stop Session
-            </Button>
-          )}
-
-          <span className="ml-auto text-sm text-gray-300">Session: {formatDuration(elapsed)}</span>
-        </div>
-
-        {status ? <p className="mt-3 text-sm text-gray-300">{status}</p> : null}
-        {!tunerEnabled ? <p className="mt-2 text-xs text-[#f7d79c]">Reminder: Tuner is OFF. Enable before session for live pitch tracking.</p> : null}
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
@@ -699,18 +606,14 @@ export const ToolsPage = () => {
             <div className="flex flex-wrap items-center gap-4">
               <span className={`h-4 w-4 rounded-full ${colorForFeedback(feedbackState)} shadow-[0_0_10px_rgba(255,255,255,0.3)]`} />
               <p className="text-sm text-gray-200">
-                {feedbackState === "correct"
-                  ? "green = correct"
-                  : feedbackState === "close"
-                    ? "yellow = close"
-                    : "red = wrong"}
+                {feedbackState === "correct" ? "green = correct" : feedbackState === "close" ? "yellow = close" : "red = wrong"}
               </p>
             </div>
 
             <div className="mt-4 grid gap-3 md:grid-cols-3">
               <div className="rounded-lg border border-white/10 bg-[#0d0d0d] p-3">
                 <p className="text-xs text-gray-400">Pitch Accuracy</p>
-                <p className="mt-1 text-2xl font-bold text-white">{metrics.samples ? Math.round((metrics.pitchHits / metrics.samples) * 100) : 0}%</p>
+                <p className="mt-1 text-2xl font-bold text-white">{pitchAccuracyPercent}%</p>
               </div>
               <div className="rounded-lg border border-white/10 bg-[#0d0d0d] p-3">
                 <p className="text-xs text-gray-400">Timing</p>
@@ -730,7 +633,7 @@ export const ToolsPage = () => {
         </Card>
 
         <Card mode={mode}>
-          <h2 className="text-2xl font-semibold text-white">Tuner + Needle</h2>
+          <h2 className="text-2xl font-semibold text-white">Guitar Tuner</h2>
           <div className="mt-4 rounded-xl border border-white/10 bg-[#101010] p-4">
             <p className="text-6xl font-bold text-[#f7d79c]">{tunerEnabled ? (pitchString ? pitchString.note : "--") : "OFF"}</p>
             <p className="mt-1 text-sm text-gray-300">
@@ -773,65 +676,6 @@ export const ToolsPage = () => {
             </div>
           </div>
         </Card>
-      </section>
-
-      <section className="rounded-2xl border border-white/10 bg-[#141414] p-6">
-        <h2 className="text-2xl font-semibold text-white">Timing Grid</h2>
-        <p className="mt-1 text-sm text-gray-300">Live beat alignment reference for rhythm and timing goals.</p>
-        <div className="mt-4 grid grid-cols-8 gap-2 md:grid-cols-16">
-          {Array.from({ length: 16 }).map((_, index) => {
-            const active = running && index % 4 === beat;
-            return (
-              <span
-                key={index}
-                className={`h-7 rounded border ${active ? "border-[#f0b64f] bg-[#f59e0b]/35" : "border-white/10 bg-[#101010]"}`}
-              />
-            );
-          })}
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2 text-xs">
-          <span className={`rounded-full px-3 py-1 ${timingLabel === "Perfect" ? "bg-emerald-500/25 text-emerald-300" : "bg-[#0f0f0f] text-gray-300"}`}>Perfect</span>
-          <span className={`rounded-full px-3 py-1 ${timingLabel === "Good" ? "bg-yellow-500/25 text-yellow-200" : "bg-[#0f0f0f] text-gray-300"}`}>Good</span>
-          <span className={`rounded-full px-3 py-1 ${timingLabel === "Early" ? "bg-amber-500/25 text-amber-200" : "bg-[#0f0f0f] text-gray-300"}`}>Early</span>
-          <span className={`rounded-full px-3 py-1 ${timingLabel === "Late" ? "bg-red-500/25 text-red-200" : "bg-[#0f0f0f] text-gray-300"}`}>Late</span>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-white/10 bg-[#141414] p-6">
-        <h2 className="text-2xl font-semibold text-white">Session Result</h2>
-
-        {sessionResult ? (
-          <div className="mt-4 space-y-4">
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-lg border border-white/10 bg-[#101010] p-3">
-                <p className="text-xs text-gray-400">Practice Time</p>
-                <p className="mt-1 text-2xl font-bold text-white">{sessionResult.practiceMinutes} min</p>
-              </div>
-              <div className="rounded-lg border border-white/10 bg-[#101010] p-3">
-                <p className="text-xs text-gray-400">Accuracy</p>
-                <p className="mt-1 text-2xl font-bold text-white">{sessionResult.accuracyPercent}%</p>
-              </div>
-              <div className="rounded-lg border border-white/10 bg-[#101010] p-3">
-                <p className="text-xs text-gray-400">Timing Diff</p>
-                <p className="mt-1 text-2xl font-bold text-white">{sessionResult.timingDiff}ms</p>
-              </div>
-              <div className="rounded-lg border border-white/10 bg-[#101010] p-3">
-                <p className="text-xs text-gray-400">Improvement</p>
-                <p className="mt-1 text-2xl font-bold text-white">{sessionResult.improvement >= 0 ? "+" : ""}{sessionResult.improvement}%</p>
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-white/10 bg-[#101010] p-4">
-              <p className="text-sm text-gray-300">AI Assistant Suggestion</p>
-              <p className="mt-2 text-sm text-gray-200">{aiSuggestion}</p>
-              <Button mode={mode} variant="secondary" className="mt-3" onClick={applyAiAdjustment}>
-                Apply BPM Adjustment
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <p className="mt-3 text-sm text-gray-400">Complete a session to see results.</p>
-        )}
       </section>
     </Container>
   );

@@ -1465,8 +1465,6 @@ export const StudioPage = () => {
 
     const outputGain = context.createGain();
     outputGain.gain.value = 1;
-    const previewGain = context.createGain();
-    previewGain.gain.value = 0.45;
 
     source.connect(inputGain);
     inputGain.connect(compressor);
@@ -1555,8 +1553,6 @@ export const StudioPage = () => {
     wetMix.connect(outputGain);
     outputGain.connect(analyser);
     outputGain.connect(destination);
-    outputGain.connect(previewGain);
-    previewGain.connect(context.destination);
 
     return { destination, analyser };
   };
@@ -2027,23 +2023,6 @@ export const StudioPage = () => {
         </p>
       </section>
 
-      <section className="rounded-2xl border border-white/10 bg-[#141414] p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-semibold text-white">Recording Diagnostics</h2>
-          <span className={`rounded-full px-2.5 py-1 text-[11px] ${diagnostics.secureContext ? "bg-emerald-500/20 text-emerald-200" : "bg-red-500/20 text-red-200"}`}>
-            {diagnostics.secureContext ? "Secure Context" : "HTTPS Required"}
-          </span>
-        </div>
-        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border border-white/10 bg-[#101010] px-3 py-2 text-gray-300">MediaDevices: {diagnostics.mediaDevices ? "available" : "missing"}</div>
-          <div className="rounded-lg border border-white/10 bg-[#101010] px-3 py-2 text-gray-300">MediaRecorder: {diagnostics.mediaRecorder ? "available" : "missing"}</div>
-          <div className="rounded-lg border border-white/10 bg-[#101010] px-3 py-2 text-gray-300">Audio MIME: {diagnostics.audioMime}</div>
-          <div className="rounded-lg border border-white/10 bg-[#101010] px-3 py-2 text-gray-300">Video MIME: {diagnostics.videoMime}</div>
-          <div className="rounded-lg border border-white/10 bg-[#101010] px-3 py-2 text-gray-300">Microphone: {diagnostics.microphonePermission}</div>
-          <div className="rounded-lg border border-white/10 bg-[#101010] px-3 py-2 text-gray-300">Camera: {diagnostics.cameraPermission}</div>
-        </div>
-      </section>
-
       <section className="rounded-2xl border border-white/10 bg-[#141414] p-6">
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <button
@@ -2339,10 +2318,6 @@ export const StudioPage = () => {
         </Card>
       </section>
 
-      <section>
-        <h2 className="mb-4 text-2xl font-semibold text-white">Music Composer</h2>
-        <ComposerDaw mode={mode} />
-      </section>
     </Container>
   );
 };
