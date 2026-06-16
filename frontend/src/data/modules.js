@@ -48,12 +48,21 @@ const strummingPatterns = {
   firstRhythm: ["↓", "↓", "↑", "↑", "↓"]
 };
 
-const createLesson = ({ moduleSlug, title, type, mature, kids, visual = null, instagramUrl = "" }) => ({
+const createLesson = ({
+  moduleSlug,
+  title,
+  type,
+  mature,
+  kids,
+  visual = null,
+  instagramUrl = "",
+  videoUrl = ""
+}) => ({
   id: `${moduleSlug}-${slugify(title)}`,
   slug: slugify(title),
   title,
   type,
-  videoUrl: "",
+  videoUrl,
   instagramUrl,
   mature,
   kids,
@@ -79,7 +88,8 @@ export const modules = [
     lessons: [
       {
         title: "Holding the Guitar & First Sound",
-        type: "strings",
+  type: "strings",
+  videoUrl: "https://www.youtube.com/watch?v=iHVpX4_i4J4",
         mature: {
           warmUp:
             "Sit straight. Place the guitar on your right leg. Keep your back straight, shoulders relaxed, and neck aligned. Rest your forearm lightly on the guitar body.",
@@ -109,7 +119,8 @@ visual: {
       },
       {
         title: "Finger Strength & Control",
-        type: "theory",
+  type: "theory",
+  videoUrl: "https://www.youtube.com/watch?v=iHVpX4_i4J4",
         mature: {
           warmUp: "Tap fingers on a table in sequence (1–2–3–4). Keep movement controlled and even.",
           coreLearning:
@@ -134,6 +145,7 @@ visual: {
       {
         title: "First Chord – Em",
         type: "chord",
+        videoUrl: "https://www.youtube.com/watch?v=iHVpX4_i4J4",
         instagramUrl: "https://www.instagram.com/strumify.in/",
         mature: {
           warmUp: "Repeat finger tapping and fret pressing exercise.",
@@ -166,6 +178,7 @@ visual: {
       {
         title: "Chord – G Major",
         type: "chord",
+        videoUrl: "https://www.youtube.com/watch?v=iHVpX4_i4J4",
         instagramUrl: "https://www.instagram.com/its.atmik/",
         mature: {
           warmUp: "Practice Em chord transitions slowly.",
