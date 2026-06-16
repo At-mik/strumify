@@ -73,10 +73,16 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null
     },
-    practiceHistory: {
-      type: [practiceHistorySchema],
-      default: []
-    }
+   practiceHistory: {
+  type: [practiceHistorySchema],
+  default: []
+},
+
+language: {
+  type: String,
+  enum: ["gu", "en"],
+  default: "gu"
+}
   },
   {
     timestamps: true

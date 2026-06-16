@@ -38,7 +38,8 @@ export const LearnPage = () => {
   const completeLesson = useLearningStore((state) => state.completeLesson);
   const { mode } = useMode();
 
-  const [activeLessonId, setActiveLessonId] = useState(() => allLessons[0]?.id || "");
+const [activeLessonId, setActiveLessonId] = useState(() => allLessons[0]?.id || "");
+const [language, setLanguage] = useState("gu");
 
   if (!user) return <Navigate to="/login" replace />;
 
@@ -55,7 +56,20 @@ export const LearnPage = () => {
         <p className="text-sm uppercase tracking-[0.18em] text-gray-400">Learn</p>
         <h1 className="text-4xl font-bold text-white">Learn Guitar Step by Step</h1>
         <p className="max-w-3xl text-gray-300">Follow focused lessons designed to build real playing confidence, one session at a time.</p>
+<div className="mt-4">
+  <select
+    value={language}
+    onChange={(e) => setLanguage(e.target.value)}
+    className="rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-white"
+  >
+    <option value="gu">ગુજરાતી</option>
+    <option value="en">English</option>
+  </select>
 
+  <p className="mt-2 text-white">
+    Current Language: {language}
+  </p>
+</div>
         <div className="max-w-xl">
           <ProgressBar mode={mode} label="Course completion" value={completedSet.size} total={allLessons.length || 1} />
           <p className="mt-2 text-sm text-gray-400">
@@ -138,14 +152,32 @@ export const LearnPage = () => {
                 )}
               </div>
 
-              <div className="space-y-4">
-                {activeSections.map((section) => (
-                  <section key={section.id} className="rounded-xl border border-white/10 bg-[#101010] p-4">
-                    <h3 className="text-base font-semibold text-white">{section.title}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-gray-300">{section.content}</p>
-                  </section>
-                ))}
-              </div>
+            <div className="rounded-xl border border-white/10 bg-[#101010] p-4">
+  <h3 className="text-base font-semibold text-white">
+    🎥 Video Solution
+  </h3>
+
+  <p className="mt-2 text-sm text-gray-400">
+    Video coming soon.
+  </p>
+</div>
+
+<div className="space-y-4">
+  {activeSections.map((section) => (
+    <section
+      key={section.id}
+      className="rounded-xl border border-white/10 bg-[#101010] p-4"
+    >
+      <h3 className="text-base font-semibold text-white">
+        {section.title}
+      </h3>
+
+      <p className="mt-2 text-sm leading-relaxed text-gray-300">
+        {section.content}
+      </p>
+    </section>
+  ))}
+</div>
 
               {activeInstagramUrl ? (
                 <div className="pt-2">

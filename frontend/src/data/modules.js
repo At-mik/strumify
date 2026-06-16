@@ -53,7 +53,7 @@ const createLesson = ({ moduleSlug, title, type, mature, kids, visual = null, in
   slug: slugify(title),
   title,
   type,
-  videoUrl: LESSON_VIDEO_URL,
+  videoUrl: "",
   instagramUrl,
   mature,
   kids,
@@ -92,19 +92,20 @@ export const modules = [
           ending: "You produced your first controlled sound. This is your foundation.",
           coachNote: "If your strings buzz, you're careless. Fix finger placement and pressure."
         },
-        kids: {
-          story: "You found a magical box 🎸… each string is a different voice!",
-          steps: [
-            "Sit like a calm explorer and hold your guitar gently",
-            "Touch each string softly with your pick",
-            "Listen… deep sound → tiny sound",
-            "Your mission: wake all 6 strings without hurting them"
-          ],
-          reward: "✨ You unlocked the sound world!"
-        },
-        visual: {
-          strings: ["E", "A", "D", "G", "B", "E"]
-        }
+       kids: {
+  story: "You found a magical box 🎸… each string is a different voice!",
+  steps: [
+    "Sit like a calm explorer and hold your guitar gently",
+    "Touch each string softly with your pick",
+    "Listen… deep sound → tiny sound",
+    "Your mission: wake all 6 strings without hurting them"
+  ],
+  reward: "✨ You unlocked the sound world!"
+},
+
+visual: {
+  strings: ["E", "A", "D", "G", "B", "E"]
+}
       },
       {
         title: "Finger Strength & Control",
